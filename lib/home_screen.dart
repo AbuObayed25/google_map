@@ -9,7 +9,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  Late GoogleMapController googleMapController;
+  late GoogleMapController googleMapController;
 
   @override
   Widget build(BuildContext context) {
