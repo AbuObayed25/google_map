@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "792681928312",
+    "project_id": "ostad-batch-7-edafa",
+    "storage_bucket": "ostad-batch-7-edafa.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:792681928312:android:6d755b4ca16736e6d6bf8d",
+        "android_client_info": {
+          "package_name": "com.obayed.google_map"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDoV3_CXnBf_YduQWtXAOFoGnycgjAqvIU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
