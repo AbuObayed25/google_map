@@ -1,10 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
-
-// GPS -> Current Location - LatLng
-// GPS service permission - YES
-// GPS service on/off - YESl
-// get data from GPS
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -14,7 +11,11 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  Position? position;
+  late GoogleMapController _mapController;
+  Marker? _userMarker;
+  List<LatLng> _polylinePoints = [];
+  Polyline? _polyline;
+  LatLng? _lastLatLng;
 
   @override
   void initState() {
@@ -30,10 +31,10 @@ class _HomeScreenState extends State<HomeScreen> {
         Geolocator.getPositionStream(
             locationSettings: const LocationSettings(
           timeLimit: Duration(seconds: 10),
-          distanceFilter: 10,
+          //distanceFilter: 10,
           accuracy: LocationAccuracy.bestForNavigation,
-        )).listen((pos) {
-          print(pos);
+        )).listen((Position pos) {
+          updateLocationOnMap(pos);
         });
       } else {
         Geolocator.openLocationSettings();
@@ -48,14 +49,43 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  void updateLocationOnMap(Position pos) {
+    LatLng currentLatLng = LatLng(pos.latitude, pos.longitude);
+
+    setState(() {
+      _userMarker = Marker(
+        markerId: MarkerId('currentLocation'),
+        position: currentLatLng,
+        infoWindow: InfoWindow(
+          title: 'My Current Location',
+          snippet: '${pos.latitude}, ${pos.longitude}',
+        ),
+      );
+
+      if (_lastLatLng != null) {
+        _polylinePoints.add(currentLatLng);
+        _polyline = Polyline(
+          polylineId: PolylineId('trackingPolyline'),
+          color: Colors.blue,
+          width: 2,
+          points: _polylinePoints,
+        );
+      }
+
+      _lastLatLng = currentLatLng;
+      // _mapController?.animateCamera(
+      //   CameraUpdate.newLatLng(currentLatLng),
+      // );
+    });
+  }
+
   Future<void> getCurrentLocation() async {
     final isGranted = await isLocationPermissionGranted();
     if (isGranted) {
       final isServiceEnable = await checkGPSServiceEnable();
       if (isServiceEnable) {
-        Position p = await Geolocator.getCurrentPosition();
-        position = p;
-        setState(() {});
+        Position pos = await Geolocator.getCurrentPosition();
+        updateLocationOnMap(pos);
       } else {
         Geolocator.openLocationSettings();
       }
@@ -71,22 +101,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<bool> requestLocationPermission() async {
     LocationPermission permission = await Geolocator.requestPermission();
-    if (permission == LocationPermission.always ||
-        permission == LocationPermission.whileInUse) {
-      return true;
-    } else {
-      return false;
-    }
+    return permission == LocationPermission.always ||
+        permission == LocationPermission.whileInUse;
   }
 
   Future<bool> isLocationPermissionGranted() async {
     LocationPermission permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.always ||
-        permission == LocationPermission.whileInUse) {
-      return true;
-    } else {
-      return false;
-    }
+    return permission == LocationPermission.always ||
+        permission == LocationPermission.whileInUse;
   }
 
   Future<bool> checkGPSServiceEnable() async {
@@ -101,22 +123,35 @@ class _HomeScreenState extends State<HomeScreen> {
         backgroundColor: Colors.blue,
         foregroundColor: Colors.white,
       ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text('My current location:$position'),
-            const SizedBox(
-              height: 20,
-            ),
-            ElevatedButton(
-              onPressed: () {
-                getCurrentLocation();
-              },
-              child: Text('Get Current Location'),
-            ),
-          ],
+      body: GoogleMap(
+        onMapCreated: (controller) => _mapController = controller,
+        initialCameraPosition: CameraPosition(
+          target: LatLng(
+            23.870990, 90.321230,
+          ),
+          zoom: 50,
         ),
+        markers: _userMarker != null ? {_userMarker!} : {},
+        polylines: _polyline != null ? {_polyline!} : {},
+        myLocationEnabled: true,
+        myLocationButtonEnabled: true,
+        trafficEnabled: true,
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          _mapController.animateCamera(
+            CameraUpdate.newCameraPosition(
+              CameraPosition(
+                target: LatLng(
+                  23.870990, 90.321230,
+                ),
+                zoom: 17,
+              ),
+            ),
+          );
+        },
+        child: Icon(Icons.location_history),
       ),
     );
   }
