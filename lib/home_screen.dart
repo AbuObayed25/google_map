@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:geolocator/geolocator.dart';
+
+// GPS -> Current Location - LatLng
+// GPS service permission - YES
+// GPS service on/off - YESl
+// get data from GPS
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -9,122 +14,109 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  late GoogleMapController googleMapController;
+  Position? position;
+
+  @override
+  void initState() {
+    super.initState();
+    listenCurrentLocation();
+  }
+
+  void listenCurrentLocation() async {
+    final isGranted = await isLocationPermissionGranted();
+    if (isGranted) {
+      final isServiceEnable = await checkGPSServiceEnable();
+      if (isServiceEnable) {
+        Geolocator.getPositionStream(
+            locationSettings: const LocationSettings(
+          timeLimit: Duration(seconds: 10),
+          distanceFilter: 10,
+          accuracy: LocationAccuracy.bestForNavigation,
+        )).listen((pos) {
+          print(pos);
+        });
+      } else {
+        Geolocator.openLocationSettings();
+      }
+    } else {
+      final result = await requestLocationPermission();
+      if (result) {
+        getCurrentLocation();
+      } else {
+        Geolocator.openAppSettings();
+      }
+    }
+  }
+
+  Future<void> getCurrentLocation() async {
+    final isGranted = await isLocationPermissionGranted();
+    if (isGranted) {
+      final isServiceEnable = await checkGPSServiceEnable();
+      if (isServiceEnable) {
+        Position p = await Geolocator.getCurrentPosition();
+        position = p;
+        setState(() {});
+      } else {
+        Geolocator.openLocationSettings();
+      }
+    } else {
+      final result = await requestLocationPermission();
+      if (result) {
+        getCurrentLocation();
+      } else {
+        Geolocator.openAppSettings();
+      }
+    }
+  }
+
+  Future<bool> requestLocationPermission() async {
+    LocationPermission permission = await Geolocator.requestPermission();
+    if (permission == LocationPermission.always ||
+        permission == LocationPermission.whileInUse) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  Future<bool> isLocationPermissionGranted() async {
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.always ||
+        permission == LocationPermission.whileInUse) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  Future<bool> checkGPSServiceEnable() async {
+    return await Geolocator.isLocationServiceEnabled();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Map Screen'),
+        title: const Text('Real-Time Location Tracker'),
+        backgroundColor: Colors.blue,
+        foregroundColor: Colors.white,
       ),
-      body: GoogleMap(
-        mapType: MapType.satellite,
-        initialCameraPosition: CameraPosition(
-          zoom: 16,
-          target: LatLng(
-            23.870992157514575,
-            90.32124268086771,
-          ),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text('My current location:$position'),
+            const SizedBox(
+              height: 20,
+            ),
+            ElevatedButton(
+              onPressed: () {
+                getCurrentLocation();
+              },
+              child: Text('Get Current Location'),
+            ),
+          ],
         ),
-        onTap: (LatLng? latLng) {
-          print(latLng);
-        },
-        zoomControlsEnabled: true,
-        zoomGesturesEnabled: true,
-        onMapCreated: (GoogleMapController controller) {
-          googleMapController = controller;
-        },
-        trafficEnabled: true,
-        markers: <Marker>{
-          const Marker(
-            markerId: MarkerId('Initial_position'),
-            position: LatLng(
-              23.870992157514575,
-              90.32124268086771,
-            ),
-          ),
-          Marker(
-            markerId: MarkerId('home'),
-            position: LatLng(
-              23.870992157514575,
-              90.32124268086771,
-            ),
-            infoWindow: InfoWindow(title: 'Home'),
-            onTap: () {
-              print('On Tapped home');
-            },
-            icon: BitmapDescriptor.defaultMarkerWithHue(
-              BitmapDescriptor.hueMagenta,
-            ),
-            draggable: true,
-            onDragStart: (LatLng onStartLatLng) {
-              print('On start drag $onStartLatLng');
-            },
-            onDragEnd: (LatLng onStopLatLng) {
-              print('On end drag $onStopLatLng');
-            },
-          ),
-        },
-        circles: <Circle>{
-          Circle(
-            circleId: CircleId('dengue_circle'),
-            fillColor: Colors.red.withOpacity(.2),
-            center: LatLng(
-              23.870992157514575,
-              90.32124268086771,
-            ),
-            strokeColor: Colors.blue,
-            strokeWidth: 1.3,
-            radius: 350,
-            visible: true,
-          ),
-          Circle(
-            circleId: CircleId('Corona_circle'),
-            fillColor: Colors.red.withOpacity(.2),
-            center: LatLng(
-              23.870992157514575, //need to change the LatLng address
-              90.32124268086771,
-            ),
-            strokeColor: Colors.blue,
-            strokeWidth: 1.3,
-            radius: 750,
-            visible: true,
-          ),
-        },
-        polylines: <Polyline>{
-          Polyline(
-              polylineId: PolylineId('Random'),
-              color: Colors.pinkAccent,
-              width: 3,
-              jointType: JointType.round,
-              points: <LatLng>[
-                //need to LatLng address
-              ])
-        },
-        polygons: <Polygon>{
-          Polygon(
-              polygonId: PolygonId('poly'),
-              fillColor: Colors.yellow.withOpacity(.2),
-              strokeColor: Colors.orangeAccent,
-              strokeWidth: 4,
-              points: <LatLng>[
-                //need to add LatLng address
-              ])
-        },
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          googleMapController.animateCamera(CameraUpdate.newCameraPosition(
-            CameraPosition(
-              zoom: 16,
-              target: LatLng(23.870992157514575,
-                90.32124268086771,),
-            ),
-           ),
-          ),
-        },
-        child: Icon(Icons.location_history),
       ),
     );
   }
